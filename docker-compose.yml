@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # --- RELACIONALES (3 Motores) ---
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: asfi_sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=SuperStrongPass123!
+    ports:
+      - "1433:1433"
+
+  mysql:
+    image: mysql:8.0
+    container_name: asfi_mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_pass
+      - MYSQL_DATABASE=bancos_db
+    ports:
+      - "3307:3306"
+
+  postgres:
+    image: postgres:15
+    container_name: asfi_postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin_pass
+      - POSTGRES_DB=bancos_db
+    ports:
+      - "5432:5432"
+
+  # --- NO RELACIONALES (2 Motores) ---
+  mongodb:
+    image: mongo:latest
+    container_name: asfi_mongo
+    ports:
+      - "27017:27017"
+
+  neo4j:
+    image: neo4j:latest
+    container_name: asfi_neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/password123
+    ports:
+      - "7474:7474"
+      - "7687:7687"
