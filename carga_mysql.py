@@ -27,37 +27,34 @@ def enc_hill_mock(txt):
 
 # --- 3. PROCESAMIENTO ---
 def procesar_registro_mysql(row):
-    bid = str(row['IdBanco'])
+    bid = str(int(float(row['IdBanco'])))
     saldo = str(row['Saldo'])
     
     try:
-        if bid == "4": # BCP - Playfair
+        if bid == "4": 
             cifrado = enc_playfair_mock(saldo)
-        elif bid == "5": # BISA - Hill
+        elif bid == "5": 
             cifrado = enc_hill_mock(saldo)
-        elif bid == "6": # Ganadero - DES 
+        elif bid == "6": 
             cifrado = enc_bloque(saldo, b'8bytekey', DES)
-        elif bid == "7": # Económico - 3DES 
+        elif bid == "7": 
             cifrado = enc_bloque(saldo, b'16bytekey_3des__', DES3)
-        elif bid == "8": # Prodem - Blowfish 
+        elif bid == "8": 
             cifrado = enc_bloque(saldo, b'secret_key_prodem', Blowfish)
         else:
             cifrado = saldo
     except Exception as e:
         cifrado = "ERR_CIFRADO"
 
-    # Retornamos el Nro (CuentaId) al principio para la PK
-    return (row['Nro'], row['NroCuenta'], row['IdBanco'], row['Identificacion'], row['Nombres'], row['Apellidos'], cifrado)
+    return (row['Nro'], str(row['NroCuenta']), row['IdBanco'], str(row['Identificacion']), row['Nombres'], row['Apellidos'], cifrado)
 
 def cargar_mysql():
     print("📂 Leyendo dataset para MySQL...")
-    df = pd.read_csv('01 - Practica 2 Dataset (1).csv', sep=';') 
-    if len(df.columns) == 1:
-        df = pd.read_csv('01 - Practica 2 Dataset (1).csv', sep=',')
-
-    # LIMPIEZA MÁGICA Y PARCHE ANTI TRAMPAS
+    df = pd.read_csv('datos (2).csv', sep=',') 
+    
     df.fillna({'Identificacion': 0, 'Nombres': 'Desconocido', 'Apellidos': 'Desconocido', 'Saldo': 0}, inplace=True)
-    df.drop_duplicates(subset=['Nro'], inplace=True)
+    df.dropna(subset=['IdBanco'], inplace=True)
+    df.drop_duplicates(inplace=True)
 
     df_mysql = df[df['IdBanco'].isin([4, 5, 6, 7, 8])]
     print(f"📊 Procesando {len(df_mysql)} cuentas para MySQL...")
@@ -69,23 +66,23 @@ def cargar_mysql():
 
     print("🚀 Inyectando lotes en MySQL...")
     try:
-        # Asegúrate de que el puerto sea el 3307 como en tu docker-compose
         conn = pymysql.connect(host='localhost', port=3307, user='root', password='root_pass')
         with conn.cursor() as cursor:
             cursor.execute("CREATE DATABASE IF NOT EXISTS bancos_db")
             cursor.execute("USE bancos_db")
             
-            # Borramos y creamos la tabla con CuentaId de PK
             cursor.execute("DROP TABLE IF EXISTS CuentasBancarias")
             cursor.execute("""
                 CREATE TABLE CuentasBancarias (
                     CuentaId BIGINT PRIMARY KEY,
-                    NroCuenta BIGINT, 
+                    NroCuenta VARCHAR(100), 
                     IdBanco INT, 
-                    Identificacion BIGINT,
+                    Identificacion VARCHAR(100),
                     Nombres VARCHAR(100), 
                     Apellidos VARCHAR(100), 
-                    SaldoCifrado VARCHAR(255)
+                    SaldoCifrado VARCHAR(255),
+                    SaldoBs DECIMAL(18,4) NULL,
+                    CodigoVerificacion VARCHAR(8) NULL
                 )
             """)
             
@@ -94,7 +91,7 @@ def cargar_mysql():
         
         conn.commit()
         conn.close()
-        print("✅ ¡Bum! MySQL poblado a la perfección bro.")
+        print("✅ MySQL poblado.")
     except Exception as e:
         print(f"❌ Error MySQL: {e}")
 

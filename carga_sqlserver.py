@@ -29,7 +29,8 @@ def enc_vigenere(txt, key="BOLIVIA"):
 
 # --- 3. PROCESAMIENTO ---
 def procesar_registro_sql(row):
-    bid = str(row['IdBanco'])
+    # Parche crítico para que el ID sea entero
+    bid = str(int(float(row['IdBanco'])))
     saldo = str(row['Saldo'])
     
     try:
@@ -44,20 +45,15 @@ def procesar_registro_sql(row):
     except Exception:
         cifrado = "ERR_CIFRADO"
 
-    # Ahora devolvemos también el 'Nro' (CuentaId) al principio
-    return (row['Nro'], row['NroCuenta'], row['IdBanco'], row['Identificacion'], row['Nombres'], row['Apellidos'], cifrado)
+    return (row['Nro'], str(row['NroCuenta']), row['IdBanco'], str(row['Identificacion']), row['Nombres'], row['Apellidos'], cifrado)
 
 def cargar_sql_server():
     print("📂 Leyendo dataset para SQL Server...")
-    df = pd.read_csv('01 - Practica 2 Dataset (1).csv', sep=';') 
-    if len(df.columns) == 1:
-        df = pd.read_csv('01 - Practica 2 Dataset (1).csv', sep=',')
-
-    # LIMPIEZA MÁGICA
-    df.fillna({'Identificacion': 0, 'Nombres': 'Desconocido', 'Apellidos': 'Desconocido', 'Saldo': 0}, inplace=True)
+    df = pd.read_csv('datos (2).csv', sep=',') 
     
-    # VOLAMOS DUPLICADOS POR SI ACASO
-    df.drop_duplicates(subset=['Nro'], inplace=True)
+    df.fillna({'Identificacion': 0, 'Nombres': 'Desconocido', 'Apellidos': 'Desconocido', 'Saldo': 0}, inplace=True)
+    df.dropna(subset=['IdBanco'], inplace=True)
+    df.drop_duplicates(inplace=True)
 
     df_sql = df[df['IdBanco'].isin([1, 2, 3])]
     print(f"📊 Procesando {len(df_sql)} cuentas para SQL Server...")
@@ -74,28 +70,28 @@ def cargar_sql_server():
         with pyodbc.connect(conn_str) as conn:
             cursor = conn.cursor()
             
-            # Borramos la tabla vieja si existe y creamos la nueva con el esquema correcto
             cursor.execute("""
                 IF OBJECT_ID('CuentasBancarias', 'U') IS NOT NULL DROP TABLE CuentasBancarias;
                 CREATE TABLE CuentasBancarias (
                     CuentaId BIGINT PRIMARY KEY, 
-                    NroCuenta BIGINT, 
+                    NroCuenta VARCHAR(100), 
                     IdBanco INT, 
-                    Identificacion BIGINT,
+                    Identificacion VARCHAR(100),
                     Nombres VARCHAR(100), 
                     Apellidos VARCHAR(100), 
-                    SaldoCifrado VARCHAR(255)
+                    SaldoCifrado VARCHAR(255),
+                    SaldoBs DECIMAL(18,4) NULL,
+                    CodigoVerificacion VARCHAR(8) NULL
                 )
             """)
             conn.commit()
 
-            # Actualizamos el INSERT para que reciba los 7 datos
             sql_insert = "INSERT INTO CuentasBancarias (CuentaId, NroCuenta, IdBanco, Identificacion, Nombres, Apellidos, SaldoCifrado) VALUES (?, ?, ?, ?, ?, ?, ?)"
             cursor.fast_executemany = True 
             cursor.executemany(sql_insert, batch_sql)
             conn.commit()
             
-        print("✅ ¡Bum! SQL Server poblado a la perfección bro.")
+        print("✅ SQL Server poblado a la perfección.")
     except Exception as e:
         print(f"❌ Error SQL Server: {e}")
 

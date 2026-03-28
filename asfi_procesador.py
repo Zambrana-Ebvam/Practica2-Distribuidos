@@ -3,7 +3,6 @@ import pyodbc
 import psycopg2
 from pymongo import MongoClient
 from neo4j import GraphDatabase
-import random
 import time
 import asfi_core
 from concurrent.futures import ThreadPoolExecutor

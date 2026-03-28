@@ -1,6 +1,6 @@
 import base64
 import json
-from Crypto.Cipher import AES, DES, DES3, Blowfish, ChaCha20
+from Crypto.Cipher import AES, DES, DES3, Blowfish
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Util.Padding import unpad
@@ -61,24 +61,6 @@ def dec_mock_base64(b64_txt, prefix=""):
     except Exception:
         return 0.0
 
-# -- ChaCha20 (Neo4j) --
-def dec_chacha20(b64_txt, key_string):
-    if b64_txt == "ERR_CIFRADO": return 0.0
-    try:
-        key_bytes = key_string.encode('utf-8')
-        if len(key_bytes) < 32: key_bytes = key_bytes.ljust(32, b'0')
-        elif len(key_bytes) > 32: key_bytes = key_bytes[:32]
-        
-        encrypted_data = base64.b64decode(b64_txt)
-        nonce = encrypted_data[:8] # ChaCha20 usa un nonce de 8 bytes por defecto
-        ciphertext = encrypted_data[8:]
-        
-        cipher = ChaCha20.new(key=key_bytes, nonce=nonce)
-        return cipher.decrypt(ciphertext).decode('utf-8')
-    except Exception as e:
-        print(f"Error descifrando ChaCha20: {e}")
-        return 0.0
-
 # --- 3. EL CEREBRO DESENCRIPTADOR ---
 def asfi_descifrar_saldo(id_banco, saldo_cifrado):
     """
@@ -86,6 +68,15 @@ def asfi_descifrar_saldo(id_banco, saldo_cifrado):
     busca la llave correcta y devuelve el saldo original en USD.
     """
     bid = str(id_banco)
+    
+    # --- PARCHE PARA NEO4J (TEXTO PLANO) ---
+    # Si es el banco 14, lo dejamos pasar como número directo sin descifrar
+    if bid == "14":
+        try:
+            return float(saldo_cifrado)
+        except Exception:
+            return 0.0
+
     try:
         if bid == "1": return float(dec_cesar(saldo_cifrado, keys.get("1", {}).get("shift", 5)))
         elif bid == "2": return float(dec_atbash(saldo_cifrado))
@@ -100,7 +91,6 @@ def asfi_descifrar_saldo(id_banco, saldo_cifrado):
         elif bid == "11": return float(dec_mock_base64(saldo_cifrado)) # MOCK TEMPORAL PARA RSA
         elif bid == "12": return float(dec_mock_base64(saldo_cifrado, prefix="ELGAMAL_"))
         elif bid == "13": return float(dec_mock_base64(saldo_cifrado, prefix="ECC_"))
-        elif bid == "14": return float(dec_chacha20(saldo_cifrado, keys.get("14", {}).get("key", "nacion_arg_chacha20_32bytes_key")))
         else: return 0.0
     except Exception as e:
         # Si algo falla radicalmente, retornamos 0 para no tumbar la ASFI
@@ -110,10 +100,12 @@ def asfi_descifrar_saldo(id_banco, saldo_cifrado):
 # --- PRUEBA RÁPIDA ---
 if __name__ == "__main__":
     print("Probando el motor de descifrado de la ASFI...")
-    # Prueba con un saldo que sabemos que es 100.50 en Atbash (Banco 2)
-    # 100.50 en Atbash -> LKK.EJ
-    saldo_prueba_cifrado = dec_atbash("100.50") # Ciframos
-    print(f"Saldo original: 100.50 | Cifrado Atbash: {saldo_prueba_cifrado}")
     
-    saldo_descifrado = asfi_descifrar_saldo(2, saldo_prueba_cifrado)
-    print(f"La ASFI descifró: {saldo_descifrado}")
+    # Prueba con Banco 2 (Atbash)
+    saldo_prueba_cifrado = dec_atbash("100.50")
+    print(f"Saldo original: 100.50 | Cifrado Atbash: {saldo_prueba_cifrado}")
+    print(f"La ASFI descifró: {asfi_descifrar_saldo(2, saldo_prueba_cifrado)}")
+    
+    # Prueba con Banco 14 (Neo4j Texto Plano)
+    print(f"\nPrueba Banco 14 (Neo4j) enviando '550.75' sin cifrar:")
+    print(f"La ASFI leyó: {asfi_descifrar_saldo(14, '550.75')}")

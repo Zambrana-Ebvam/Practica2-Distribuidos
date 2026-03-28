@@ -4,7 +4,7 @@ import pyodbc # Para SQL Server
 import json
 
 # 1. Cargar llaves y configuración
-with open('asfi_keys.json', 'r') as f:
+with open('asfi_keys.json', 'r') as f:  
     keys = json.load(f)
 
 # --- FUNCIONES DE CIFRADO CLÁSICO ---
@@ -23,7 +23,7 @@ def enc_vigenere(txt, key="BOL"):
 # --- PROCESO DE CARGA ---
 def cargar_relacionales():
     print("📂 Leyendo dataset...")
-    df = pd.read_csv('01 - Practica 2 Dataset.csv')
+    df = pd.read_csv('datos (2)')
     
     batch_sql_server = [] # Bancos 1, 2, 3
     batch_mysql = []      # Bancos 4, 5, 6
