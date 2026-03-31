@@ -68,9 +68,7 @@ def asfi_descifrar_saldo(id_banco, saldo_cifrado):
     busca la llave correcta y devuelve el saldo original en USD.
     """
     bid = str(id_banco)
-    
-    # --- PARCHE PARA NEO4J (TEXTO PLANO) ---
-    # Si es el banco 14, lo dejamos pasar como número directo sin descifrar
+
     if bid == "14":
         try:
             return float(saldo_cifrado)
@@ -93,11 +91,8 @@ def asfi_descifrar_saldo(id_banco, saldo_cifrado):
         elif bid == "13": return float(dec_mock_base64(saldo_cifrado, prefix="ECC_"))
         else: return 0.0
     except Exception as e:
-        # Si algo falla radicalmente, retornamos 0 para no tumbar la ASFI
-        # print(f"Error crítico descifrando banco {bid}: {e}")
         return 0.0
 
-# --- PRUEBA RÁPIDA ---
 if __name__ == "__main__":
     print("Probando el motor de descifrado de la ASFI...")
     
